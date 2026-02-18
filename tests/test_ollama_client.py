@@ -28,15 +28,20 @@ def test_is_available(monkeypatch):
 
 
 def test_summarize_cluster(monkeypatch, make_item):
+    captured: dict[str, str] = {}
+
     def fake_post(url, json, timeout):  # noqa: ARG001
         assert json["model"] == "phi3"
+        captured["prompt"] = json["prompt"]
         return DummyResponse({"response": "Summary content"})
 
     monkeypatch.setattr(requests, "post", fake_post)
     client = OllamaClient(OllamaConfig(base_url="http://localhost:11434", model="phi3", timeout_s=10))
     cluster = Cluster(cluster_id="c1", items=[make_item()], score=1.0)
-    summary = client.summarize_cluster(cluster)
+    summary = client.summarize_cluster(cluster, cluster.items)
     assert summary == "Summary content"
+    assert "What happened:" in captured["prompt"]
+    assert "Sources:" in captured["prompt"]
 
 
 def test_summarize_cluster_handles_missing_response(monkeypatch, make_item):
@@ -47,4 +52,4 @@ def test_summarize_cluster_handles_missing_response(monkeypatch, make_item):
     client = OllamaClient(OllamaConfig(base_url="http://localhost:11434", model="phi3", timeout_s=10))
     cluster = Cluster(cluster_id="c1", items=[make_item()], score=1.0)
     with pytest.raises(OllamaError):
-        client.summarize_cluster(cluster)
+        client.summarize_cluster(cluster, cluster.items)

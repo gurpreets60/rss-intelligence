@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Callable, Sequence
 
 import requests
@@ -16,6 +17,7 @@ from .models import Cluster, NewsItem, PipelineOptions
 from .ollama_client import OllamaClient, OllamaError
 
 log = logging.getLogger(__name__)
+EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 @dataclass(slots=True)
@@ -51,20 +53,66 @@ def run_pipeline(
         similarity_threshold=opts.threshold,
         max_items=opts.max_items,
     )
-    llm_used = False
-    if clusters and llm and opts.llm_enabled:
-        llm_used = _summarize_clusters(clusters, llm)
+    llm_client = llm if (llm and opts.llm_enabled) else None
+    llm_used = _summarize_clusters(clusters, llm_client)
     cache.mark_clusters(clusters)
     return PipelineResult(clusters=clusters, items=filtered, llm_used=llm_used)
 
 
-def _summarize_clusters(clusters: Sequence[Cluster], llm: OllamaClient) -> bool:
+def _summarize_clusters(clusters: Sequence[Cluster], llm: OllamaClient | None) -> bool:
     used = False
     for cluster in clusters:
+        representative = select_representative_items(cluster)
+        summary_text: str | None = None
         try:
-            cluster.summary = llm.summarize_cluster(cluster)
-            used = True
+            if llm:
+                summary_text = llm.summarize_cluster(cluster, representative)
+                used = True
         except OllamaError as exc:
             log.warning("Ollama summarization failed: %s", exc)
-            break
+        if not summary_text:
+            summary_text = build_local_summary(cluster, representative)
+        cluster.summary = summary_text
     return used
+
+
+def select_representative_items(cluster: Cluster, limit: int = 5) -> list[NewsItem]:
+    if not cluster.items:
+        return []
+
+    def sort_key(item: NewsItem) -> tuple[float, int, str]:
+        ts = item.published_dt or EPOCH
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        timestamp = ts.timestamp()
+        return (-timestamp, len(item.title), item.title.lower())
+
+    ordered = sorted(cluster.items, key=sort_key)
+    return ordered[:limit]
+
+
+def build_local_summary(cluster: Cluster, items: Sequence[NewsItem]) -> str:
+    if not items:
+        return "\n".join(
+            [
+                "What happened: No supporting stories available yet.",
+                "- Awaiting additional reporting.",
+                "- Check feeds for updates.",
+                "- No confirmed facts.",
+                "Sources: none",
+            ]
+        )
+    primary = items[0]
+    bullets = [f"- {item.source}: {item.title}" for item in items]
+    bullets = bullets[:6]
+    filler = "- Additional context unavailable."
+    while len(bullets) < 3:
+        bullets.append(filler)
+    sources = "; ".join(sorted({item.source for item in items}))
+    return "\n".join(
+        [
+            f"What happened: {primary.title}",
+            *bullets,
+            f"Sources: {sources or 'none'}",
+        ]
+    )

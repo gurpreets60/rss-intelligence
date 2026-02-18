@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import requests
 
-from .models import Cluster
+from .models import Cluster, NewsItem
 
 log = logging.getLogger(__name__)
 
@@ -36,8 +36,8 @@ class OllamaClient:
             log.debug("Ollama availability check failed: %s", exc)
             return False
 
-    def summarize_cluster(self, cluster: Cluster, *, max_items: int = 5) -> str:
-        prompt = self._build_prompt(cluster, max_items=max_items)
+    def summarize_cluster(self, cluster: Cluster, items: list[NewsItem], *, max_items: int = 5) -> str:
+        prompt = self._build_prompt(cluster, items, max_items=max_items)
         payload = {
             "model": self.config.model,
             "prompt": prompt,
@@ -58,17 +58,26 @@ class OllamaClient:
         return data["response"].strip()
 
     @staticmethod
-    def _build_prompt(cluster: Cluster, *, max_items: int) -> str:
+    def _build_prompt(cluster: Cluster, items: list[NewsItem], *, max_items: int) -> str:
         lines = [
-            "Summarize the following related news items in 3 concise sentences.",
-            "Highlight what is new and avoid repetition.",
-            "Respond with markdown using one short paragraph and optional bullet list of takeaways.",
+            "You are drafting a newsroom digest from multiple sources.",
+            "Write output exactly in this format:",
+            "What happened: <single sentence summary>",
+            "- <bullet 1>",
+            "- <bullet 2>",
+            "- <bullet 3>",
+            "(add up to 6 bullets total)",
+            "Sources: name1; name2; ...",
+            "Bullets must highlight key entities, numbers, or dates when present.",
+            "Use only the evidence provided; avoid speculation.",
             "Stories:",
         ]
-        for item in cluster.items[:max_items]:
+        for item in items[:max_items]:
+            summary = (item.summary or "")[:400].strip()
             lines.append(f"- {item.title} (source: {item.source})")
             if item.summary:
-                lines.append(f"  Summary: {item.summary[:280]}")
+                lines.append(f"  Summary: {summary}")
+            lines.append(f"  Link: {item.link}")
         return "\n".join(lines)
 
 
