@@ -61,6 +61,39 @@ def test_cli_fetch_reports_items(tmp_path, monkeypatch):
     assert "2 shown" in result.stdout
 
 
+def test_cli_fetch_since_option(tmp_path, monkeypatch):
+    config_path = _write_config(tmp_path)
+    items = [_news_item("Story", "https://example.com/a")]
+
+    monkeypatch.setattr(cli, "fetch_all_feeds", lambda *args, **kwargs: items)
+    monkeypatch.setattr(cli, "dedupe_items", lambda data: data)
+
+    captured: dict[str, object] = {}
+
+    def fake_apply_filters(data, opts):
+        captured["since"] = opts.since
+        return data
+
+    monkeypatch.setattr(cli, "apply_filters", fake_apply_filters)
+    monkeypatch.setattr(cli, "CacheStore", DummyCache)
+    monkeypatch.setattr(cli, "print_fetch_summary", lambda data, top_n: None)
+    sentinel = object()
+    monkeypatch.setattr(cli, "build_since_from_cli", lambda value, settings: sentinel)
+
+    result = runner.invoke(
+        cli.app,
+        [
+            "fetch",
+            "--config",
+            str(config_path),
+            "--since",
+            "3d",
+        ],
+    )
+    assert result.exit_code == 0
+    assert captured.get("since") is sentinel
+
+
 def test_cli_summarize_uses_pipeline(tmp_path, monkeypatch):
     config_path = _write_config(tmp_path)
     item = _news_item("Story", "https://example.com/a")

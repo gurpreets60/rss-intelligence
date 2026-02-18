@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Sequence
 
 from rich.console import Console
@@ -10,11 +11,19 @@ from .models import Cluster, NewsItem
 console = Console()
 
 
+def format_timestamp(dt: datetime | None) -> str:
+    if not dt:
+        return "(no timestamp)"
+    utc_dt = dt.astimezone(timezone.utc)
+    return utc_dt.strftime("%Y-%m-%d %H:%M UTC")
+
+
 def print_fetch_summary(items: Sequence[NewsItem], *, top_n: int = 5) -> None:
     count = len(items)
     console.print(f"[bold green]{count}[/bold green] new items", highlight=False)
     for item in items[:top_n]:
-        console.print(f" • [cyan]{item.title}[/cyan] — {item.source}")
+        timestamp = format_timestamp(item.published_dt)
+        console.print(f" • [cyan]{item.title}[/cyan] — {item.source} ({timestamp})")
 
 
 def print_clusters(clusters: Sequence[Cluster]) -> None:
@@ -30,6 +39,7 @@ def print_clusters(clusters: Sequence[Cluster]) -> None:
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Source")
         table.add_column("Title")
+        table.add_column("Published")
         for item in cluster.items:
-            table.add_row(item.source, item.title)
+            table.add_row(item.source, item.title, format_timestamp(item.published_dt))
         console.print(table)

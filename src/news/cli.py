@@ -33,14 +33,15 @@ def _setup(config_path: Path) -> tuple[AppConfig, CacheStore, Path]:
 @app.command()
 def fetch(
     config_path: Path = typer.Option(Path("feeds.yaml"), "--config", help="Path to feeds YAML"),
+    since: str | None = typer.Option(None, help="Recency window like 24h or 3d"),
     top: int | None = typer.Option(None, help="Show this many top titles"),
 ) -> None:
     config, cache, _ = _setup(config_path)
     items = fetch_all_feeds(config.feeds, config.settings)
     deduped = dedupe_items(items)
     unseen = cache.filter_new_items(deduped, mark=False)
-    since = build_since_from_cli(None, config.settings)
-    filtered = apply_filters(unseen, FilterOptions(since=since))
+    since_dt = build_since_from_cli(since, config.settings)
+    filtered = apply_filters(unseen, FilterOptions(since=since_dt))
     cache.mark_items(filtered)
     top_n = top or config.settings.top_n_fetch
     print_fetch_summary(filtered, top_n=top_n)
