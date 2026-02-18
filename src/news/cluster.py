@@ -37,17 +37,15 @@ def cluster_items(
             cluster_id = f"cluster-{len(clusters) + 1}"
             clusters.append(
                 Cluster(
-                    id=cluster_id,
+                    cluster_id=cluster_id,
                     items=[item],
                     score=1.0,
-                    top_keywords=(),
-                    summary=None,
                 )
             )
             vectors.append(item_vector)
 
     for cluster, vector in zip(clusters, vectors):
-        cluster.top_keywords = _top_keywords(vector, k=5)
+        cluster.keywords = _top_keywords(vector, k=5)
         cluster.score = float(len(cluster.items))
     return clusters
 
@@ -77,6 +75,6 @@ def _cosine_similarity(vec_a: Counter[str], vec_b: Counter[str]) -> float:
     return dot / (mag_a * mag_b)
 
 
-def _top_keywords(vector: Counter[str], k: int = 5) -> tuple[str, ...]:
+def _top_keywords(vector: Counter[str], k: int = 5) -> list[str]:
     most_common = vector.most_common(k)
-    return tuple(word for word, _ in most_common)
+    return [word for word, _ in most_common]

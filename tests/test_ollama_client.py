@@ -34,7 +34,7 @@ def test_summarize_cluster(monkeypatch, make_item):
 
     monkeypatch.setattr(requests, "post", fake_post)
     client = OllamaClient(OllamaConfig(base_url="http://localhost:11434", model="phi3", timeout_s=10))
-    cluster = Cluster(id="c1", items=[make_item()], score=1.0)
+    cluster = Cluster(cluster_id="c1", items=[make_item()], score=1.0)
     summary = client.summarize_cluster(cluster)
     assert summary == "Summary content"
 
@@ -45,6 +45,6 @@ def test_summarize_cluster_handles_missing_response(monkeypatch, make_item):
 
     monkeypatch.setattr(requests, "post", fake_post)
     client = OllamaClient(OllamaConfig(base_url="http://localhost:11434", model="phi3", timeout_s=10))
-    cluster = Cluster(id="c1", items=[make_item()], score=1.0)
+    cluster = Cluster(cluster_id="c1", items=[make_item()], score=1.0)
     with pytest.raises(OllamaError):
         client.summarize_cluster(cluster)

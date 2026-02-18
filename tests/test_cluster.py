@@ -12,4 +12,4 @@ def test_cluster_groups_similar_items(make_item):
     clusters = cluster_items(items, similarity_threshold=0.3)
     assert len(clusters) == 2
     assert len(clusters[0].items) == 2
-    assert clusters[0].top_keywords
+    assert clusters[0].keywords

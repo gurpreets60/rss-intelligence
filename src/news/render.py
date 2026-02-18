@@ -25,8 +25,8 @@ def print_clusters(clusters: Sequence[Cluster]) -> None:
         console.rule(f"Cluster {idx}: {cluster.headline()}")
         if cluster.summary:
             console.print(cluster.summary)
-        if cluster.top_keywords:
-            console.print(f"Keywords: {', '.join(cluster.top_keywords)}")
+        if cluster.keywords:
+            console.print(f"Keywords: {', '.join(cluster.keywords)}")
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Source")
         table.add_column("Title")

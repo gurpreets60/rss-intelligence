@@ -78,18 +78,19 @@ def _entry_to_news_item(feed: FeedConfig, entry: Any) -> NewsItem | None:
     summary = entry.get("summary")
     content = _extract_content(entry)
     entry_tags = [tag.get("term", "").lower() for tag in entry.get("tags", [])]
-    tags = tuple({tag for tag in (*entry_tags, *feed.tags) if tag})
-    authors = tuple(author.get("name", "") for author in entry.get("authors", []))
+    tags = [tag for tag in dict.fromkeys([*entry_tags, *feed.tags]) if tag]
+    authors = [author.get("name", "") for author in entry.get("authors", []) if author.get("name")]
     return NewsItem(
         id=str(entry_id),
         title=title.strip(),
         link=link.strip(),
         source=feed.name,
-        published=published,
+        published_dt=published,
         summary=summary.strip() if summary else None,
         content=content,
-        tags=tuple(tag for tag in tags if tag),
-        authors=tuple(author for author in authors if author),
+        tags=tags,
+        authors=authors,
+        raw={"entry_id": entry_id},
     )
 
 

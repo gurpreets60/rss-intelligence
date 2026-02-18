@@ -17,11 +17,12 @@ def make_item() -> Callable[..., NewsItem]:
             "title": overrides.get("title", "Sample Title"),
             "link": overrides.get("link", "https://example.com/a"),
             "source": overrides.get("source", "Example"),
-            "published": overrides.get("published", base_time),
+            "published_dt": overrides.get("published_dt", base_time),
             "summary": overrides.get("summary", "Sample summary"),
             "content": overrides.get("content", None),
-            "tags": overrides.get("tags", ("tech",)),
-            "authors": overrides.get("authors", ("Reporter",)),
+            "tags": list(overrides.get("tags", ["tech"])),
+            "authors": list(overrides.get("authors", ["Reporter"])),
+            "raw": overrides.get("raw"),
         }
         return NewsItem(**data)
 

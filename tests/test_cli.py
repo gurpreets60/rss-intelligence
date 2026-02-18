@@ -64,7 +64,7 @@ def test_cli_fetch_reports_items(tmp_path, monkeypatch):
 def test_cli_summarize_uses_pipeline(tmp_path, monkeypatch):
     config_path = _write_config(tmp_path)
     item = _news_item("Story", "https://example.com/a")
-    cluster = Cluster(id="c1", items=[item], score=1.0, top_keywords=("story",), summary="Summary")
+    cluster = Cluster(cluster_id="c1", items=[item], score=1.0, keywords=["story"], summary="Summary")
     pipeline_result = PipelineResult(clusters=[cluster], items=[item], llm_used=False)
 
     monkeypatch.setattr(cli, "run_pipeline", lambda *args, **kwargs: pipeline_result)

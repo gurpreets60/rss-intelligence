@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Iterable, Sequence
+from typing import Any, Iterable, Sequence
 
 
 def utc_now() -> datetime:
     return datetime.now(tz=timezone.utc)
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(slots=True)
 class NewsItem:
     """Normalized representation of a feed entry."""
 
@@ -17,11 +17,12 @@ class NewsItem:
     title: str
     link: str
     source: str
-    published: datetime | None = None
+    published_dt: datetime | None = None
     summary: str | None = None
     content: str | None = None
-    tags: tuple[str, ...] = ()
-    authors: tuple[str, ...] = ()
+    tags: list[str] = field(default_factory=list)
+    authors: list[str] = field(default_factory=list)
+    raw: dict[str, Any] | None = None
 
     def text_blob(self) -> str:
         """Aggregate fields for keyword matching."""
@@ -35,10 +36,10 @@ class NewsItem:
 
 @dataclass(slots=True)
 class Cluster:
-    id: str
+    cluster_id: str
     items: list[NewsItem]
-    score: float
-    top_keywords: tuple[str, ...] = ()
+    keywords: list[str] = field(default_factory=list)
+    score: float | None = None
     summary: str | None = None
 
     @property
@@ -50,10 +51,10 @@ class Cluster:
 
     def to_dict(self) -> dict[str, object]:
         return {
-            "id": self.id,
+            "id": self.cluster_id,
             "score": self.score,
             "summary": self.summary,
-            "keywords": list(self.top_keywords),
+            "keywords": self.keywords,
             "items": [item.__dict__ for item in self.items],
         }
 
@@ -101,6 +102,6 @@ class PipelineOptions:
 def newest_first(items: Sequence[NewsItem]) -> list[NewsItem]:
     return sorted(
         items,
-        key=lambda item: item.published or utc_now(),
+        key=lambda item: item.published_dt or utc_now(),
         reverse=True,
     )

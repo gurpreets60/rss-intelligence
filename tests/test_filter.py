@@ -28,8 +28,8 @@ def test_filter_domain_and_tags(make_item):
 
 def test_filter_since_and_limit(make_item):
     now = datetime(2024, 1, 5, tzinfo=timezone.utc)
-    recent = make_item(id="1", published=now - timedelta(hours=1))
-    old = make_item(id="2", published=now - timedelta(days=3))
+    recent = make_item(id="1", published_dt=now - timedelta(hours=1))
+    old = make_item(id="2", published_dt=now - timedelta(days=3))
     opts = FilterOptions(since=now - timedelta(days=1), max_items=1)
     filtered = apply_filters([recent, old], opts)
     assert filtered == [recent]

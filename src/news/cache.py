@@ -56,14 +56,14 @@ class CacheStore:
     def mark_clusters(self, clusters: Iterable[Cluster]) -> None:
         changed = False
         for cluster in clusters:
-            if cluster.id not in self._data["seen_clusters"]:
-                self._data["seen_clusters"][cluster.id] = self._now()
+            if cluster.cluster_id not in self._data["seen_clusters"]:
+                self._data["seen_clusters"][cluster.cluster_id] = self._now()
                 changed = True
         if changed:
             self._save()
 
     def unseen_clusters(self, clusters: Sequence[Cluster]) -> list[Cluster]:
-        fresh = [cluster for cluster in clusters if cluster.id not in self._data["seen_clusters"]]
+        fresh = [cluster for cluster in clusters if cluster.cluster_id not in self._data["seen_clusters"]]
         return fresh
 
     @staticmethod

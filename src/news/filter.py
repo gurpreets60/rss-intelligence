@@ -15,7 +15,7 @@ def apply_filters(items: Sequence[NewsItem], options: FilterOptions) -> list[New
     opts = options.normalized()
     filtered: list[NewsItem] = []
     for item in items:
-        if opts.since and item.published and item.published < opts.since:
+        if opts.since and item.published_dt and item.published_dt < opts.since:
             continue
         if opts.include and not _matches_keywords(item, opts.include):
             continue
