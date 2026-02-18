@@ -1,0 +1,29 @@
+settings:
+  user_agent: "news-cli/0.1"
+  timeout_s: 10
+  max_items_per_feed: 30
+  cache_dir: ".news_cache"
+  default_since: "48h"
+  top_n_fetch: 5
+  ollama:
+    enabled: true
+    base_url: "http://127.0.0.1:11434"
+    model: "phi3"
+    timeout_s: 30
+
+feeds:
+  - name: "BBC Technology"
+    url: "http://feeds.bbci.co.uk/news/technology/rss.xml"
+    tags: ["tech", "mainstream"]
+  - name: "Ars Technica"
+    url: "http://feeds.arstechnica.com/arstechnica/index/"
+    tags: ["tech", "deep"]
+  - name: "The Guardian - Technology"
+    url: "https://www.theguardian.com/uk/technology/rss"
+    tags: ["tech", "world"]
+  - name: "MIT News - Research"
+    url: "https://news.mit.edu/rss/research"
+    tags: ["research"]
+  - name: "Hacker News - Frontpage"
+    url: "https://hnrss.org/frontpage"
+    tags: ["community", "tech"]
