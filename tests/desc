@@ -1,0 +1,13 @@
+Brief description about the tests:
+
+  - tests/test_config.py exercises YAML parsing and duration helpers.                                  
+  - tests/test_feeds.py feeds a local RSS XML string through fetch_feed, ensuring we parse entries     
+    without network calls.                                                                             
+  - tests/test_filter.py checks keyword/domain/tag filters plus recency limits.                        
+  - tests/test_dedupe.py validates link/title dedup heuristics (we’ll expand this once tracking-strip  
+    logic lands).                                                                                      
+  - tests/test_cluster.py keeps the lightweight clustering deterministic and threshold-aware.          
+  - tests/test_ollama_client.py mocks HTTP calls to guarantee the Ollama client handles success/error  
+    paths.                                                                                             
+  - tests/test_cli.py uses Typer’s runner with monkeypatched dependencies to confirm news fetch and    
+    news summarize wire the pipeline together.   

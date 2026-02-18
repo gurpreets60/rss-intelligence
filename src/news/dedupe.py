@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from difflib import SequenceMatcher
 from typing import Iterable, Sequence
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse, urlencode
 
 from .models import NewsItem
 
@@ -17,6 +17,23 @@ STOPWORDS = {
     "in",
     "for",
     "on",
+}
+TRACKING_PARAMS = {
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "utm_id",
+    "utm_name",
+    "utm_reader",
+    "utm_place",
+    "fbclid",
+    "gclid",
+    "mc_cid",
+    "mc_eid",
+    "icmpid",
+    "ref",
 }
 
 
@@ -41,10 +58,14 @@ def dedupe_items(items: Sequence[NewsItem], *, title_threshold: float = 0.92) ->
 def _normalize_link(link: str) -> str:
     parsed = urlparse(link)
     netloc = (parsed.hostname or parsed.netloc or "").lower()
-    path = parsed.path.rstrip("/")
+    path = parsed.path.rstrip("/") or "/"
     if not netloc:
         return ""
-    return f"{netloc}{path}"
+    clean_query = _strip_tracking_params(parsed.query)
+    key = f"{netloc}{path}"
+    if clean_query:
+        key = f"{key}?{clean_query}"
+    return key
 
 
 def _normalize_title(title: str) -> str:
@@ -62,3 +83,16 @@ def _normalize_title(title: str) -> str:
 
 def _has_similar_title(reference: str, past_titles: Iterable[str], threshold: float) -> bool:
     return any(SequenceMatcher(a=reference, b=prev).ratio() >= threshold for prev in past_titles)
+
+
+def _strip_tracking_params(query: str) -> str:
+    if not query:
+        return ""
+    filtered = [
+        (name, value)
+        for name, value in parse_qsl(query, keep_blank_values=True)
+        if name.lower() not in TRACKING_PARAMS
+    ]
+    if not filtered:
+        return ""
+    return urlencode(filtered, doseq=True)
