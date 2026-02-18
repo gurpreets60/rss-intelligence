@@ -8,7 +8,12 @@ from rich.table import Table
 
 from .models import Cluster, NewsItem
 
-console = Console()
+console = Console(no_color=True)
+
+
+def set_color(enabled: bool) -> None:
+    global console
+    console = Console(no_color=not enabled)
 
 
 def format_timestamp(dt: datetime | None) -> str:

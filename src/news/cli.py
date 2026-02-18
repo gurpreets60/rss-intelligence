@@ -16,7 +16,7 @@ from .feeds import fetch_all_feeds
 from .filter import apply_filters
 from .models import FilterOptions, PipelineOptions
 from .ollama_client import OllamaClient, OllamaConfig, build_client
-from .render import print_clusters, print_fetch_summary
+from .render import print_clusters, print_fetch_summary, set_color
 from .summarize import PipelineResult, run_pipeline
 
 app = typer.Typer(help="RSS Intelligence CLI")
@@ -35,8 +35,10 @@ def fetch(
     config_path: Path = typer.Option(Path("feeds.yaml"), "--config", help="Path to feeds YAML"),
     since: str | None = typer.Option(None, help="Recency window like 24h or 3d"),
     top: int | None = typer.Option(None, help="Show this many top titles"),
+    color: bool = typer.Option(False, "--color/--no-color", help="Enable ANSI colors in output"),
 ) -> None:
     config, cache, _ = _setup(config_path)
+    set_color(color)
     items = fetch_all_feeds(config.feeds, config.settings)
     deduped = dedupe_items(items)
     unseen = cache.filter_new_items(deduped, mark=False)
@@ -58,8 +60,10 @@ def summarize(
     threshold: float = typer.Option(0.55, help="Clustering similarity threshold (0-1)"),
     max_items: int | None = typer.Option(None, help="Cap number of items processed"),
     llm: bool = typer.Option(True, "--llm/--no-llm", help="Toggle Ollama summarization"),
+    color: bool = typer.Option(False, "--color/--no-color", help="Enable ANSI colors in output"),
 ) -> None:
     config, cache, _ = _setup(config_path)
+    set_color(color)
     filter_opts = _build_filter_options(config, since, include, exclude, domain, tag, max_items)
     pipeline_opts = PipelineOptions(filters=filter_opts, threshold=threshold, max_items=max_items, llm_enabled=llm)
     client = _maybe_build_ollama(config, llm)
@@ -80,8 +84,10 @@ def watch(
     max_items: int | None = typer.Option(None, help="Cap number of items processed"),
     llm: bool = typer.Option(True, "--llm/--no-llm", help="Toggle Ollama summarization"),
     notify: bool = typer.Option(False, "--notify", help="Use notify-send when available"),
+    color: bool = typer.Option(False, "--color/--no-color", help="Enable ANSI colors in output"),
 ) -> None:
     config, cache, _ = _setup(config_path)
+    set_color(color)
     interval_seconds = max(5, int(parse_duration(interval).total_seconds()))
     client = _maybe_build_ollama(config, llm)
     try:
