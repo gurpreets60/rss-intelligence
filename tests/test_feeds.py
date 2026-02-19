@@ -36,11 +36,15 @@ class DummyResponse:
 
 
 class DummySession:
-    def __init__(self, content: str):
+    def __init__(self, content: str, failures: int = 0):
         self.content = content
         self.closed = False
+        self.failures = failures
 
     def get(self, *_args, **_kwargs):
+        if self.failures > 0:
+            self.failures -= 1
+            raise requests.RequestException("temporary failure")
         return DummyResponse(self.content)
 
     def close(self):
@@ -55,6 +59,14 @@ def test_fetch_feed_parses_entries():
     assert len(items) == 2
     assert items[0].title == "Story One"
     assert "tech" in items[0].tags
+
+
+def test_fetch_feed_retries_on_failure():
+    feed = FeedConfig(name="Example", url="https://example.com/rss", tags=["tech"])
+    settings = Settings()
+    session = DummySession(SAMPLE_FEED, failures=1)
+    items = fetch_feed(feed, settings, session=session, max_retries=2)
+    assert len(items) == 2
 
 
 class ErrorSession(DummySession):

@@ -22,21 +22,34 @@ def fetch_feed(
     settings: Settings,
     *,
     session: requests.Session | None = None,
+    max_retries: int = 2,
 ) -> list[NewsItem]:
     sess = session or requests.Session()
-    try:
-        response = sess.get(
-            feed.url,
-            headers={"User-Agent": settings.user_agent},
-            timeout=settings.timeout_s,
-        )
-        response.raise_for_status()
-    except requests.RequestException as exc:
-        log.warning("Failed to fetch %s: %s", feed.url, exc)
-        raise FeedError(str(exc)) from exc
-    finally:
-        if session is None:
-            sess.close()
+    created_session = session is None
+    response = None
+    error: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            response = sess.get(
+                feed.url,
+                headers={"User-Agent": settings.user_agent},
+                timeout=settings.timeout_s,
+            )
+            response.raise_for_status()
+            break
+        except requests.RequestException as exc:
+            error = exc
+            log.warning("Failed to fetch %s (attempt %s/%s): %s", feed.url, attempt + 1, max_retries + 1, exc)
+            if attempt == max_retries:
+                if created_session:
+                    sess.close()
+                raise FeedError(str(exc)) from exc
+    else:
+        raise FeedError(f"Unable to fetch {feed.url}: {error}") from error
+
+    assert response is not None
+    if created_session:
+        sess.close()
 
     parsed = feedparser.parse(response.content)
     if parsed.bozo and parsed.bozo_exception:
