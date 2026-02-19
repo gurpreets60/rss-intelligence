@@ -19,6 +19,7 @@ src/rss_intelligence.egg-info/dependency_links.txt
 src/rss_intelligence.egg-info/entry_points.txt
 src/rss_intelligence.egg-info/requires.txt
 src/rss_intelligence.egg-info/top_level.txt
+tests/test_cache_integration.py
 tests/test_cli.py
 tests/test_cluster.py
 tests/test_config.py
@@ -26,3 +27,5 @@ tests/test_dedupe.py
 tests/test_feeds.py
 tests/test_filter.py
 tests/test_ollama_client.py
+tests/test_render.py
+tests/test_summarize.py

@@ -9,7 +9,7 @@ settings:
     enabled: true
     base_url: "http://127.0.0.1:11434"
     model: "phi3"
-    timeout_s: 30
+    timeout_s: 60
 
 feeds:
   - name: "BBC Technology"
