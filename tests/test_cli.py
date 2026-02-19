@@ -88,6 +88,14 @@ def test_cli_fetch_since_option(tmp_path, monkeypatch):
             str(config_path),
             "--since",
             "3d",
+            "--include",
+            "ai",
+            "--exclude",
+            "sports",
+            "--domain",
+            "example.com",
+            "--tag",
+            "tech",
         ],
     )
     assert result.exit_code == 0

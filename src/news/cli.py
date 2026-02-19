@@ -35,6 +35,10 @@ def fetch(
     config_path: Path = typer.Option(Path("feeds.yaml"), "--config", help="Path to feeds YAML"),
     since: str | None = typer.Option(None, help="Recency window like 24h or 3d"),
     top: int | None = typer.Option(None, help="Show this many top titles"),
+    include: list[str] | None = typer.Option(None, "--include", "-i", help="Keyword to include", show_default=False),
+    exclude: list[str] | None = typer.Option(None, "--exclude", help="Keyword to exclude", show_default=False),
+    domain: list[str] | None = typer.Option(None, "--domain", help="Only include host"),
+    tag: list[str] | None = typer.Option(None, "--tag", help="Only include feed tag"),
     color: bool = typer.Option(False, "--color/--no-color", help="Enable ANSI colors in output"),
 ) -> None:
     config, cache, _ = _setup(config_path)
@@ -43,7 +47,16 @@ def fetch(
     deduped = dedupe_items(items)
     unseen = cache.filter_new_items(deduped, mark=False)
     since_dt = build_since_from_cli(since, config.settings)
-    filtered = apply_filters(unseen, FilterOptions(since=since_dt))
+    filtered = apply_filters(
+        unseen,
+        FilterOptions(
+            since=since_dt,
+            include=tuple(include or []),
+            exclude=tuple(exclude or []),
+            domains=tuple(domain or []),
+            tags=tuple(tag or []),
+        ),
+    )
     cache.mark_items(filtered)
     top_n = top or config.settings.top_n_fetch
     print_fetch_summary(filtered, top_n=top_n)
