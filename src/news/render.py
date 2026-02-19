@@ -9,6 +9,7 @@ from rich.table import Table
 from .models import Cluster, NewsItem
 
 console = Console(no_color=True)
+MAX_ITEMS_PER_CLUSTER = 5
 
 
 def set_color(enabled: bool) -> None:
@@ -31,7 +32,7 @@ def print_fetch_summary(items: Sequence[NewsItem], *, top_n: int = 5) -> None:
         console.print(f" • [cyan]{item.title}[/cyan] — {item.source} ({timestamp})")
 
 
-def print_clusters(clusters: Sequence[Cluster]) -> None:
+def print_clusters(clusters: Sequence[Cluster], *, max_items: int = MAX_ITEMS_PER_CLUSTER) -> None:
     if not clusters:
         console.print("No new clusters to summarize.")
         return
@@ -41,10 +42,13 @@ def print_clusters(clusters: Sequence[Cluster]) -> None:
             console.print(cluster.summary)
         if cluster.keywords:
             console.print(f"Keywords: {', '.join(cluster.keywords)}")
+        sources = "; ".join(sorted({item.source for item in cluster.items}))
+        if sources:
+            console.print(f"Sources: {sources}")
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Source")
         table.add_column("Title")
         table.add_column("Published")
-        for item in cluster.items:
+        for item in cluster.items[:max_items]:
             table.add_row(item.source, item.title, format_timestamp(item.published_dt))
         console.print(table)
