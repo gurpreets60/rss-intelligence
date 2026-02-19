@@ -134,3 +134,12 @@ def test_cli_summarize_uses_pipeline(tmp_path, monkeypatch):
     )
     assert result.exit_code == 0
     assert "clusters:1" in result.stdout
+
+
+def test_print_run_stats(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "_current_memory_mb", lambda: 123.4)
+    cli._print_run_stats(2.5, prefix="[test]")
+    output = capsys.readouterr().out
+    assert "[test]" in output
+    assert "2.50s" in output
+    assert "123.4" in output

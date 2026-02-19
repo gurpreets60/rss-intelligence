@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import resource
 import shutil
+import sys
 import time
 from pathlib import Path
 from typing import Iterable
@@ -77,11 +79,13 @@ def summarize(
 ) -> None:
     config, cache, _ = _setup(config_path)
     set_color(color)
+    start = time.perf_counter()
     filter_opts = _build_filter_options(config, since, include, exclude, domain, tag, max_items)
     pipeline_opts = PipelineOptions(filters=filter_opts, threshold=threshold, max_items=max_items, llm_enabled=llm)
     client = _maybe_build_ollama(config, llm)
     result = run_pipeline(config, cache, pipeline_opts, llm=client)
     _render_result(result)
+    _print_run_stats(time.perf_counter() - start)
 
 
 @app.command()
@@ -105,10 +109,12 @@ def watch(
     client = _maybe_build_ollama(config, llm)
     try:
         while True:
+            start = time.perf_counter()
             filter_opts = _build_filter_options(config, since, include, exclude, domain, tag, max_items)
             pipeline_opts = PipelineOptions(filters=filter_opts, threshold=threshold, max_items=max_items, llm_enabled=llm)
             result = run_pipeline(config, cache, pipeline_opts, llm=client)
             _render_result(result)
+            _print_run_stats(time.perf_counter() - start, prefix="[watch]")
             if notify and result.clusters:
                 _notify(f"{len(result.clusters)} new clusters")
             time.sleep(interval_seconds)
@@ -161,3 +167,16 @@ def _notify(message: str) -> None:
         subprocess.run([binary, "RSS Intel", message], check=False)
     else:
         typer.echo(f"[notify] {message}")
+
+
+def _print_run_stats(duration_s: float, prefix: str = "") -> None:
+    memory_mb = _current_memory_mb()
+    label = f"{prefix} " if prefix else ""
+    typer.echo(f"{label}Completed in {duration_s:.2f}s | RSS ~{memory_mb:.1f} MB")
+
+
+def _current_memory_mb() -> float:
+    usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    if sys.platform == "darwin":
+        usage /= 1024  # bytes -> KB
+    return usage / 1024  # KB -> MB

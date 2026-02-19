@@ -33,4 +33,9 @@ All tests are offline and mock network/LLM calls:
 pytest -q
 ```
 
+## System Notes
+- Developed and tested on Linux (Arch); other Unix-like systems should work as long as Python 3.11+ is available.
+- Requires a local Ollama installation with the `phi3` model for summaries (`ollama serve` / `ollama run phi3`).
+- Notifications in `news watch --notify` rely on `notify-send` (libnotify/Xorg); without it the CLI falls back to plaintext messages.
+
 .venv/bin/activate && pytest
