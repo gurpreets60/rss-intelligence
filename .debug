@@ -1,0 +1,4 @@
+Debugging commands
+
+# For step-by-step logging:
+news summarize-debug --config feeds.yaml --since 24h --include "ai"

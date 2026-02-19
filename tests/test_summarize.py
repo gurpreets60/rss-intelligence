@@ -39,10 +39,12 @@ def test_run_pipeline_respects_cache(tmp_path, make_item, monkeypatch):
     monkeypatch.setattr("news.summarize.fetch_all_feeds", lambda *args, **kwargs: items)
     monkeypatch.setattr("news.summarize.dedupe_items", lambda data: data)
     monkeypatch.setattr("news.summarize.apply_filters", lambda data, opts: data)
-    monkeypatch.setattr("news.cluster.cluster_items", lambda items, similarity_threshold, max_items: [
-        Cluster(cluster_id="c1", items=list(items), keywords=[])
-    ])
-    monkeypatch.setattr("news.summarize._summarize_clusters", lambda clusters, llm: False)
+    monkeypatch.setattr(
+        "news.cluster.cluster_items",
+        lambda items, similarity_threshold, max_items: [Cluster(cluster_id="c1", items=list(items), keywords=[])],
+    )
+
+    monkeypatch.setattr("news.summarize._summarize_clusters", lambda clusters, llm, reporter=None: False)
 
     options = PipelineOptions(filters=FilterOptions())
     first = run_pipeline(config, cache, options)

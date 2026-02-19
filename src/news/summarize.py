@@ -37,15 +37,26 @@ def run_pipeline(
     *,
     session_factory: SessionFactory | None = None,
     llm: OllamaClient | None = None,
+    reporter: Callable[[str], None] | None = None,
 ) -> PipelineResult:
+    def report(message: str) -> None:
+        if reporter:
+            reporter(message)
+
     opts = options.clamp()
     settings = app_config.settings
+    report("Fetching feeds")
     items = fetch_all_feeds(app_config.feeds, settings, session_factory=session_factory)
+    report(f"Fetched {len(items)} raw items")
     deduped = dedupe_items(items)
+    report(f"Deduped down to {len(deduped)} items")
     unseen = cache.filter_new_items(deduped, mark=False)
+    report(f"{len(unseen)} unseen items after cache filter")
     filtered = apply_filters(unseen, opts.filters)
+    report(f"{len(filtered)} items after keyword/tag filters")
     if opts.max_items is not None:
         filtered = filtered[: opts.max_items]
+        report(f"Capped to {len(filtered)} items due to --max-items")
     cache.mark_items(filtered)
 
     clusters = cluster_items(
@@ -53,24 +64,37 @@ def run_pipeline(
         similarity_threshold=opts.threshold,
         max_items=opts.max_items,
     )
+    report(f"Clustered into {len(clusters)} groups")
     llm_client = llm if (llm and opts.llm_enabled) else None
-    llm_used = _summarize_clusters(clusters, llm_client)
+    llm_used = _summarize_clusters(clusters, llm_client, reporter=reporter)
     cache.mark_clusters(clusters)
+    report("Pipeline completed")
     return PipelineResult(clusters=clusters, items=filtered, llm_used=llm_used)
 
 
-def _summarize_clusters(clusters: Sequence[Cluster], llm: OllamaClient | None) -> bool:
+def _summarize_clusters(
+    clusters: Sequence[Cluster],
+    llm: OllamaClient | None,
+    *,
+    reporter: Callable[[str], None] | None = None,
+) -> bool:
     used = False
     for cluster in clusters:
         representative = select_representative_items(cluster)
         summary_text: str | None = None
         try:
             if llm:
+                if reporter:
+                    reporter(f"Summarizing cluster {cluster.cluster_id} via Ollama")
                 summary_text = llm.summarize_cluster(cluster, representative)
                 used = True
         except OllamaError as exc:
             log.warning("Ollama summarization failed: %s", exc)
+            if reporter:
+                reporter(f"Ollama failed: {exc}")
         if not summary_text:
+            if reporter:
+                reporter(f"Using local fallback for cluster {cluster.cluster_id}")
             summary_text = build_local_summary(cluster, representative)
         cluster.summary = summary_text
     return used

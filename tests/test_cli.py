@@ -136,6 +136,32 @@ def test_cli_summarize_uses_pipeline(tmp_path, monkeypatch):
     assert "clusters:1" in result.stdout
 
 
+def test_cli_summarize_debug_enables_reporter(tmp_path, monkeypatch):
+    config_path = _write_config(tmp_path)
+    item = _news_item("Story", "https://example.com/a")
+    cluster = Cluster(cluster_id="c1", items=[item], keywords=["story"], score=1.0, summary="Summary")
+    pipeline_result = PipelineResult(clusters=[cluster], items=[item], llm_used=False)
+    captured: dict[str, object] = {}
+
+    def fake_run_pipeline(*args, **kwargs):
+        captured["reporter"] = kwargs.get("reporter")
+        return pipeline_result
+
+    monkeypatch.setattr(cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(cli, "print_clusters", lambda clusters: None)
+
+    result = runner.invoke(
+        cli.app,
+        [
+            "summarize-debug",
+            "--config",
+            str(config_path),
+        ],
+    )
+    assert result.exit_code == 0
+    assert callable(captured.get("reporter"))
+
+
 def test_print_run_stats(monkeypatch, capsys):
     monkeypatch.setattr(cli, "_current_memory_mb", lambda: 123.4)
     cli._print_run_stats(2.5, prefix="[test]")

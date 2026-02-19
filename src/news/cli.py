@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import resource
 import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
 from typing import Iterable
 
-import subprocess
-
 import typer
+from rich.console import Console
 
 from .cache import CacheStore
 from .config import AppConfig, build_since_from_cli, load_config, parse_duration
@@ -77,15 +77,47 @@ def summarize(
     llm: bool = typer.Option(True, "--llm/--no-llm", help="Toggle Ollama summarization"),
     color: bool = typer.Option(False, "--color/--no-color", help="Enable ANSI colors in output"),
 ) -> None:
-    config, cache, _ = _setup(config_path)
-    set_color(color)
-    start = time.perf_counter()
-    filter_opts = _build_filter_options(config, since, include, exclude, domain, tag, max_items)
-    pipeline_opts = PipelineOptions(filters=filter_opts, threshold=threshold, max_items=max_items, llm_enabled=llm)
-    client = _maybe_build_ollama(config, llm)
-    result = run_pipeline(config, cache, pipeline_opts, llm=client)
-    _render_result(result)
-    _print_run_stats(time.perf_counter() - start)
+    _run_summarize_command(
+        config_path,
+        since,
+        include,
+        exclude,
+        domain,
+        tag,
+        threshold,
+        max_items,
+        llm,
+        color,
+        debug=False,
+    )
+
+
+@app.command("summarize-debug")
+def summarize_debug(
+    config_path: Path = typer.Option(Path("feeds.yaml"), "--config", help="Path to feeds YAML"),
+    since: str | None = typer.Option(None, help="Recency window like 24h or 3d"),
+    include: list[str] | None = typer.Option(None, "--include", "-i", help="Keyword to include", show_default=False),
+    exclude: list[str] | None = typer.Option(None, "--exclude", help="Keyword to exclude", show_default=False),
+    domain: list[str] | None = typer.Option(None, "--domain", help="Only include host"),
+    tag: list[str] | None = typer.Option(None, "--tag", help="Only include feed tag"),
+    threshold: float = typer.Option(0.55, help="Clustering similarity threshold (0-1)"),
+    max_items: int | None = typer.Option(None, help="Cap number of items processed"),
+    llm: bool = typer.Option(True, "--llm/--no-llm", help="Toggle Ollama summarization"),
+    color: bool = typer.Option(True, "--color/--no-color", help="Enable ANSI colors in output"),
+) -> None:
+    _run_summarize_command(
+        config_path,
+        since,
+        include,
+        exclude,
+        domain,
+        tag,
+        threshold,
+        max_items,
+        llm,
+        color,
+        debug=True,
+    )
 
 
 @app.command()
@@ -120,6 +152,32 @@ def watch(
             time.sleep(interval_seconds)
     except KeyboardInterrupt:
         typer.echo("Stopping watch mode...")
+
+
+def _run_summarize_command(
+    config_path: Path,
+    since: str | None,
+    include: list[str] | None,
+    exclude: list[str] | None,
+    domain: list[str] | None,
+    tag: list[str] | None,
+    threshold: float,
+    max_items: int | None,
+    llm: bool,
+    color: bool,
+    *,
+    debug: bool,
+) -> None:
+    config, cache, _ = _setup(config_path)
+    set_color(color)
+    reporter = _build_debug_reporter(debug, color)
+    start = time.perf_counter()
+    filter_opts = _build_filter_options(config, since, include, exclude, domain, tag, max_items)
+    pipeline_opts = PipelineOptions(filters=filter_opts, threshold=threshold, max_items=max_items, llm_enabled=llm)
+    client = _maybe_build_ollama(config, llm)
+    result = run_pipeline(config, cache, pipeline_opts, llm=client, reporter=reporter)
+    _render_result(result)
+    _print_run_stats(time.perf_counter() - start)
 
 
 def _build_filter_options(
@@ -180,3 +238,15 @@ def _current_memory_mb() -> float:
     if sys.platform == "darwin":
         usage /= 1024  # bytes -> KB
     return usage / 1024  # KB -> MB
+
+
+def _build_debug_reporter(enabled: bool, color: bool):
+    if not enabled:
+        return None
+    console = Console(no_color=not color)
+
+    def reporter(message: str) -> None:
+        console.print(f"[bold cyan]DEBUG[/] {message}")
+        typer.echo(f"[debug] {message}")
+
+    return reporter
