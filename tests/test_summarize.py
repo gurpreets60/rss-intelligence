@@ -4,8 +4,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from news.models import Cluster
-from news.summarize import build_local_summary, select_representative_items
+from news.cache import CacheStore
+from news.config import AppConfig, Settings
+from news.models import Cluster, FilterOptions, PipelineOptions
+from news.summarize import build_local_summary, run_pipeline, select_representative_items
 
 
 def test_select_representative_items_prefers_recent(make_item):
@@ -27,3 +29,24 @@ def test_local_summary_structure(make_item):
     assert text.startswith("What happened:")
     assert text.count("- ") >= 3
     assert "Sources:" in text
+
+
+def test_run_pipeline_respects_cache(tmp_path, make_item, monkeypatch):
+    config = AppConfig(settings=Settings(cache_dir=str(tmp_path / ".cache")), feeds=[])
+    cache = CacheStore(config.ensure_cache_dir(tmp_path))
+    items = [make_item(id="1", link="https://example.com/a"), make_item(id="2", link="https://example.com/b")]
+
+    monkeypatch.setattr("news.summarize.fetch_all_feeds", lambda *args, **kwargs: items)
+    monkeypatch.setattr("news.summarize.dedupe_items", lambda data: data)
+    monkeypatch.setattr("news.summarize.apply_filters", lambda data, opts: data)
+    monkeypatch.setattr("news.cluster.cluster_items", lambda items, similarity_threshold, max_items: [
+        Cluster(cluster_id="c1", items=list(items), keywords=[])
+    ])
+    monkeypatch.setattr("news.summarize._summarize_clusters", lambda clusters, llm: False)
+
+    options = PipelineOptions(filters=FilterOptions())
+    first = run_pipeline(config, cache, options)
+    assert len(first.items) == 2
+
+    second = run_pipeline(config, cache, options)
+    assert len(second.items) == 0
